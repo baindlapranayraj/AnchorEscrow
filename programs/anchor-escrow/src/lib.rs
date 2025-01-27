@@ -1,4 +1,5 @@
 pub mod constant;
+pub mod error;
 pub mod instructions;
 pub mod state;
 use anchor_lang::prelude::*;
@@ -26,7 +27,15 @@ pub mod anchor_escrow {
         Ok(())
     }
 
-    pub fn exchange(ctx: Context<Take>, seed: u64, amount: u64) -> Result<()> {
+    // No need for the deposite amount and seed in argument bcoz escrow state already knows about them.
+    pub fn exchange(ctx: Context<Take>) -> Result<()> {
+        ctx.accounts.exchange_amount()?;
+        ctx.accounts.escrow_close()?;
+        Ok(())
+    }
+
+    pub fn refund(ctx: Context<WithdrawAll>) -> Result<()> {
+        ctx.accounts.withdraw_close()?;
         Ok(())
     }
 }

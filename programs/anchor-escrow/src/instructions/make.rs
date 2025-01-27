@@ -100,3 +100,7 @@ impl<'info> Maker<'info> {
 // 2) No need assign token program,anchor already knows about it.
 //
 // 3) Interface is for any Token Program can included hear it could be either token program or Token2022 Program.
+//
+// 4) Removing all the lamports “communicates” that you don’t want the account to continue to exist.
+//
+// 5)Transferring ownership to the system program requires erasing the data in the account.
