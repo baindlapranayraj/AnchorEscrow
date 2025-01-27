@@ -25,6 +25,10 @@ pub mod anchor_escrow {
         ctx.accounts.deposite_amount(amount_deposited)?;
         Ok(())
     }
+
+    pub fn exchange(ctx: Context<Take>, seed: u64, amount: u64) -> Result<()> {
+        Ok(())
+    }
 }
 
 // +++++++++++++++++ Key Points +++++++++++++++++

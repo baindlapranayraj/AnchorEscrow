@@ -15,8 +15,10 @@ pub struct Maker<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
 
-    #[account()]
+    #[account(mint::token_program = token_program)]
     pub mint_a: InterfaceAccount<'info, Mint>,
+
+    #[account(mint::token_program = token_program)]
     pub mint_b: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -25,7 +27,7 @@ pub struct Maker<'info> {
         token::authority = maker,
         // token::token_program = token_program, // 2)
     )]
-    pub token_account_a: InterfaceAccount<'info, TokenAccount>,
+    pub maker_ata_a: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         init,
@@ -78,7 +80,7 @@ impl<'info> Maker<'info> {
         let cpi_program = self.token_program.to_account_info();
 
         let cpi_accounts = TransferChecked {
-            from: self.token_account_a.to_account_info(),
+            from: self.maker_ata_a.to_account_info(),
             to: self.vault.to_account_info(),
             authority: self.maker.to_account_info(),
             mint: self.mint_a.to_account_info(),
