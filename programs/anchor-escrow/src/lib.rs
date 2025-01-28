@@ -22,8 +22,8 @@ pub mod anchor_escrow {
         msg!("Greetings from: {:?}", ctx.program_id);
         let bump = ctx.bumps;
 
-        ctx.accounts.initialize_escrow(seed, amount_req, bump)?;
-        ctx.accounts.deposite_amount(amount_deposited)?;
+        ctx.accounts.initialize_escrow(seed, amount_req, bump)?; // initialize
+        ctx.accounts.deposite_amount(amount_deposited)?; // deposite
         Ok(())
     }
 
@@ -35,7 +35,8 @@ pub mod anchor_escrow {
     }
 
     pub fn refund(ctx: Context<WithdrawAll>) -> Result<()> {
-        ctx.accounts.withdraw_close()?;
+        ctx.accounts.withdraw_all()?;
+        ctx.accounts.close_vault()?;
         Ok(())
     }
 }
@@ -43,3 +44,8 @@ pub mod anchor_escrow {
 // +++++++++++++++++ Key Points +++++++++++++++++
 
 // - Accounts can store up to 10MB of data, which can consist of either executable program code or program state.x
+//
+// - In anchor perspective if an account has zero lamports and the owner is setted to system_program
+//   then we can initialize that accont.
+//
+// -

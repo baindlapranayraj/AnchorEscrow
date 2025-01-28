@@ -47,7 +47,7 @@ pub struct WithdrawAll<'info> {
 }
 
 impl<'info> WithdrawAll<'info> {
-    pub fn withdraw_close(&mut self) -> Result<()> {
+    pub fn withdraw_all(&mut self) -> Result<()> {
         let cpi_program = self.token_program.to_account_info();
         let cpi_accounts = TransferChecked {
             authority: self.escrow_state.to_account_info(),
@@ -74,6 +74,41 @@ impl<'info> WithdrawAll<'info> {
             self.mint_a.decimals,
         )?;
 
+        // the vault account will be automatically closed
+
+        Ok(())
+    }
+
+    pub fn close_vault(&mut self) -> Result<()> {
+        let cpi_program = self.token_program.to_account_info();
+        let close_account = token_interface::CloseAccount {
+            account: self.vault_account.to_account_info(),
+            destination: self.maker.to_account_info(),
+            authority: self.escrow_state.to_account_info(),
+        };
+
+        let seed_bind = self.escrow_state.seed.to_le_bytes();
+
+        let seeds = &[
+            ESCROW_SEED,
+            self.maker.key.as_ref(),
+            seed_bind.as_ref(),
+            &[self.escrow_state.escrow_bump],
+        ];
+
+        let signer_seeds = &[&seeds[..]];
+
+        let cpi_context = CpiContext::new_with_signer(cpi_program, close_account, signer_seeds);
+
+        token_interface::close_account(cpi_context)?;
+
         Ok(())
     }
 }
+
+// +++++++++++++++++ Key Points +++++++++++++++++
+
+// - the close macro reduces the lamport balance to zero, sending the lamports to a target address,
+// and changes the owner of the account to be the system program.
+//
+// -

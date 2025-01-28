@@ -12,6 +12,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { BN } from "bn.js";
+import { assert } from "chai";
 import { before } from "mocha";
 import { AnchorEscrow } from "../target/types/anchor_escrow";
 
@@ -143,8 +144,11 @@ describe("anchor-escrow", () => {
   let bob: anchor.web3.Keypair;
   let mint_a: anchor.web3.PublicKey;
   let mint_b: anchor.web3.PublicKey;
-  let token_account_alice: Account;
-  let token_account_bob: Account;
+  let token_account_a_alice: Account;
+  let token_account_b_alice: Account;
+  let token_account_b_bob: Account;
+  let token_account_a_bob: Account;
+
   let escrow_state: anchor.web3.PublicKey;
   let vault_account: anchor.web3.PublicKey;
 
@@ -167,12 +171,14 @@ describe("anchor-escrow", () => {
       mint_b = await mint_account(provider, bob); // for bob
 
       // create token accounts
-      token_account_alice = await ata_accounts(provider, alice, mint_a);
-      token_account_bob = await ata_accounts(provider, bob, mint_b);
+      token_account_a_alice = await ata_accounts(provider, alice, mint_a);
+      token_account_b_alice = await ata_accounts(provider, alice, mint_b);
+      token_account_b_bob = await ata_accounts(provider, bob, mint_b);
+      token_account_a_bob = await ata_accounts(provider, bob, mint_a);
 
       // mint tokens
-      await mint_tokens(provider, alice, mint_a, token_account_alice, 100);
-      await mint_tokens(provider, bob, mint_b, token_account_bob, 100);
+      await mint_tokens(provider, alice, mint_a, token_account_a_alice, 100);
+      await mint_tokens(provider, bob, mint_b, token_account_b_bob, 100);
 
       // create escorw accout
       escrow_state = await create_pda(
@@ -198,7 +204,7 @@ describe("anchor-escrow", () => {
     try {
       const alic_account_info_before = await getAccount(
         provider.connection,
-        token_account_alice.address
+        token_account_a_alice.address
       );
 
       console.log(
@@ -212,7 +218,7 @@ describe("anchor-escrow", () => {
           maker: alice.publicKey,
           mintA: mint_a,
           mintB: mint_b,
-          tokenAccountA: token_account_alice.address,
+          makerAtaA: token_account_a_alice.address,
           escrowState: escrow_state,
           vault: vault_account,
 
@@ -235,7 +241,7 @@ describe("anchor-escrow", () => {
 
       const alic_account_info = await getAccount(
         provider.connection,
-        token_account_alice.address
+        token_account_a_alice.address
       );
 
       console.log(
@@ -251,6 +257,75 @@ describe("anchor-escrow", () => {
       );
     } catch (e) {
       throw new Error(`You got an error while testing Maker Instruction: ${e}`);
+    }
+  });
+
+  it("Exchange the amount/value", async () => {
+    try {
+      await program.methods
+        .exchange()
+        .accountsStrict({
+          maker: alice.publicKey,
+          taker: bob.publicKey,
+
+          mintA: mint_a,
+          mintB: mint_b,
+
+          makerAtaB: token_account_b_alice.address,
+          takerAtaA: token_account_a_bob.address,
+          takerAtaB: token_account_b_bob.address,
+
+          escrowState: escrow_state,
+          vaultAccount: vault_account,
+
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers([bob])
+        .rpc();
+
+      let bob_ata_a = await getAccount(
+        provider.connection,
+        token_account_a_bob.address
+      );
+      console.log(
+        `The amount inside of this token account is:- ${
+          Number(bob_ata_a.amount) / 1_000_000
+        }`
+      );
+    } catch (e) {
+      console.log(
+        `You got an error while trying to exchnage the tokens:- ${e}`
+      );
+      throw new Error(e);
+    }
+  });
+
+  it("Withdraw All Amount", async () => {
+    try {
+      await program.methods
+        .refund()
+        .accountsStrict({
+          maker: alice.publicKey,
+          mintA: mint_a,
+          makerAtaA: token_account_a_alice.address,
+          escrowState: escrow_state,
+          vaultAccount: vault_account,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([alice])
+        .rpc();
+
+      const pda = await program.account.escrowState.fetchNullable(escrow_state);
+
+      assert.equal(pda, null);
+    } catch (e) {
+      throw new Error(
+        `You got an error while trying to withdraw all amounts ${e}`
+      );
     }
   });
 });
